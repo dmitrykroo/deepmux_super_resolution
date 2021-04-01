@@ -1,10 +1,10 @@
 # Super Resolution With ESRGAN and DeepMux
 
-ESRGAN is a SoTA model in image super resolution. Testing codes are uploaded at https://github.com/xinntao/ESRGAN. Here we show how to create a functional interface for the model and deploy it to DeepMux platform/
+[*ESRGAN*](https://github.com/xinntao/ESRGAN) is a SoTA model in image super resolution. Here we show how to create a functional interface for the model and deploy it to DeepMux platform.
 
 ## Setting up the environment.
 
-To run everything, you need to install deepmux-cli and log in. This is done with the following two commands
+To run everything, you need to install *deepmux-cli* and log in. This is done with the following two commands
 
 ```
 pip install deepmux-cli
@@ -13,7 +13,7 @@ deepmux login
 
 The last command will ask you to enter your unique API token, which you can find on app.deepmux.com.
 
-Let's create a folder for the project:
+Let's clone the repository:
 
 `git clone https://github.com/xinntao/ESRGAN.git && cd ESRGAN`
 
@@ -75,11 +75,11 @@ def superres(data):
     return output_bytes
 ```
 
-The `model_path` variable may be changed to use another one of the provided models.
+The `model_path` variable may be changed to use another one of the provided models. See the [original repo](https://github.com/xinntao/ESRGAN) for more details
 
 ## Adding requirements and initializing:
 
-Create a `requirements.txt` file. As we are going to launch the model in a pytorch-cuda environment, we only need to specify opencv here:
+Create a `requirements.txt` file. As we are going to launch the model in a pytorch-cuda environment, we only need to specify *opencv* here:
 ```
 opencv-python
 ```
@@ -131,8 +131,3 @@ To do this, you need to run the following command:
 curl -X POST -H "X-Token: <YOUR TOKEN>" https://api.deepmux.com/v1/function/esrgan/run --data-binary "@baboon.png" > baboon_hr.png”
 ```
 and model's output will be saved to `baboon_hr.png`.
-
-
-
-
-
