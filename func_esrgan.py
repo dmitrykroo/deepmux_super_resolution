@@ -39,4 +39,7 @@ def superres(data):
     with open('hr.png', 'rb') as f:
         output_bytes = f.read()
         
+    os.remove('lr.png')
+    os.remove('hr.png')
+    
     return output_bytes
