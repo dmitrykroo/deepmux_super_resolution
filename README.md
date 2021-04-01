@@ -1,6 +1,6 @@
 # Super Resolution With ESRGAN and DeepMux
 
-ESRGAN is a SoTA model in image super resolution. Testing codes are uploaded at https://github.com/xinntao/ESRGAN.
+ESRGAN is a SoTA model in image super resolution. Testing codes are uploaded at https://github.com/xinntao/ESRGAN. Here we show how to create a functional interface for the model and deploy it to DeepMux platform/
 
 ## Setting up the environment.
 
@@ -15,29 +15,73 @@ The last command will ask you to enter your unique API token, which you can find
 
 Let's create a folder for the project:
 
-`mkdir sentiment_analysis && cd sentiment_analysis `
+`git clone https://github.com/xinntao/ESRGAN.git && cd ESRGAN`
+
+## Downloading pretrained weights
+
+Download the files from [Google Drive](https://drive.google.com/drive/u/0/folders/17VYV_SoZZesU6mbxz2dMAIccSSlqLecY) and put them into `./models` folder.
 
 ## Writing some code:
 
-Let's create a `main.py` file and write the following code:
+The original testing code is contained within `test.py`, where the model iterates over a specific folder and outputs resulting images into another folder. We want something different - to take bytes as an input and output bytes as well.
+
+So, let's create a `func_esrgan.py` file and write the following code:
 
 ```python
-import transformers
+import os.path as osp
+import glob
+import cv2
+import numpy as np
+import torch
+import RRDBNet_arch as arch
 
-classifier = transformers.pipeline('sentiment-analysis')
+model_path = 'models/RRDB_ESRGAN_x4.pth'  # models/RRDB_ESRGAN_x4.pth OR models/RRDB_PSNR_x4.pth
+device = torch.device('cuda')  # if you want to run on CPU, change 'cuda' -> cpu
+# device = torch.device('cpu')
 
-def classify(data):
-    global classifier
-    return str(classifier(data.decode('utf-8')))
+model = arch.RRDBNet(3, 3, 64, 23, gc=32)
+model.load_state_dict(torch.load(model_path), strict=True)
+model.eval()
+model = model.to(device)
+
+# print('Model path {:s}. \nTesting...'.format(model_path))
+
+
+def superres(data):
+    path = 'lr.png'
+    
+    with open(path, 'wb') as f:
+        f.write(data)
+    
+    # read images
+    img = cv2.imread(path, cv2.IMREAD_COLOR)
+    img = img * 1.0 / 255
+    img = torch.from_numpy(np.transpose(img[:, :, [2, 1, 0]], (2, 0, 1))).float()
+    img_LR = img.unsqueeze(0)
+    img_LR = img_LR.to(device)
+
+    with torch.no_grad():
+        output = model(img_LR).data.squeeze().float().cpu().clamp_(0, 1).numpy()
+    output = np.transpose(output[[2, 1, 0], :, :], (1, 2, 0))
+    output = (output * 255.0).round()
+    cv2.imwrite('hr.png', output)
+    
+    with open('hr.png', 'rb') as f:
+        output_bytes = f.read()
+        
+    os.remove('lr.png')
+    os.remove('hr.png')
+    
+    return output_bytes
 ```
 
-That’s it!
+The `model_path` variable may be changed to use another one of the provided models.
 
 ## Adding requirements and initializing:
 
-Create a `requirements.txt` file and write the name and version of the library used there:
+Create a `requirements.txt` file. As we are going to launch the model in a pytorch-cuda environment, we only need to specify opencv here:
 ```
-transformers==4.3.2
+opencv-python
 ```
 Our project is almost ready! We write the following command:
 
@@ -54,22 +98,24 @@ python:
 ```
 
 To fill in the env line, ru the deepmux env command. The result will be something like this:
-```
-name: python3.6 language: python
+```name: python3.6 language: python
 name: python3.7 language: python
 name: python3.6-tensorflow2.1-pytorch-1.6-cuda10.1 language: python
 name: python3.7-tensorflow2.1-pytorch-1.6-cuda10.1 language: python
 name: python3.7-tensorflow2.2-pytorch-1.6-cuda10.1 language: python
+name: python3.7-tensorflow1.13.1-pytorch-1.3-cuda10.0 language: python
+name: python3.7-mmdetection-pytorch-1.6-cuda10.1 language: python
 ```
-GPU acceleration is supported by the last three. Choose an environment with the latest versions of pytorch and tensorflow libraries, transformers use them!
+As we do not need tensorflow, let's choose the last environment.
 
 The resulting yaml file should look like this:
 ```yaml
-name: sentiment_analysis 
-env: python3.7-tensorflow2.2-pytorch-1.6-cuda10.1
+name: esrgan
+env: python3.7-mmdetection-pytorch-1.6-cuda10.1
 python:
-  call: main:classify
+  call: func_esrgan:superres
   requirements: requirements.txt
+
 ```
 ## Loading the model:
 
@@ -77,28 +123,14 @@ Your model is ready to deploy! Now, just call the `deepmux upload` command. This
 
 ## Running the model:
 
-Now the model is uploaded and ready to use. Let's run the model on some line, for example, “Hello, buddy!”
+The model is uploaded and ready to use. Let's run the model on an image!
 
 To do this, you need to run the following command:
 
+```shell
+curl -X POST -H "X-Token: <YOUR TOKEN>" https://api.deepmux.com/v1/function/esrgan/run --data-binary "@baboon.png" > baboon_hr.png”
 ```
-deepmux run --name sentiment_analysis --data “Hello my friend!”
-```
-Expected output:
-
-`[{'label': 'POSITIVE', 'score': 0.999329686164856}]`
-
-What happens if you write something not so pleasant?
-
-```
-deepmux run --name sentiment_analysis --data “I’m not sure I’ll be able to help you”
-```
-
-`[{'label': 'NEGATIVE', 'score': 0.9994960427284241}]`
-
-
-
-
+and model's output will be saved to `baboon_hr.png`.
 
 
 
