@@ -128,6 +128,6 @@ The model is uploaded and ready to use. Let's run the model on an image!
 To do this, you need to run the following command:
 
 ```shell
-curl -X POST -H "X-Token: <YOUR TOKEN>" https://api.deepmux.com/v1/function/esrgan/run --data-binary "@baboon.png" > baboon_hr.png”
+curl -X POST -H "X-Token: <YOUR TOKEN>" https://api.deepmux.com/v1/function/esrgan/run --data-binary "@baboon.png" > baboon_hr.png
 ```
 and model's output will be saved to `baboon_hr.png`.
